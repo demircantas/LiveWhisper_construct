@@ -2,7 +2,7 @@
 import whisper, os
 import numpy as np
 import sounddevice as sd
-# import requests # for sending to api
+import requests # for sending to api
 from scipy.io.wavfile import write
 
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
@@ -74,7 +74,7 @@ class StreamHandler:
                 construct_index = lowercase_text.index('construct')
                 sentence = transcribed_text[construct_index + len('construct'):].strip()
                 print(f"CONSTRUCT({sentence})")
-                # self.send_to_api(sentence)
+                self.send_to_api(sentence)
 
             if self.asst.analyze is not None:
                 self.asst.analyze(result['text'])
@@ -85,6 +85,11 @@ class StreamHandler:
         print("\033[32mListening.. \033[37m(Ctrl+C to Quit)\033[0m")
         with sd.InputStream(channels=1, callback=self.callback, blocksize=int(SampleRate * BlockSize / 1000), samplerate=SampleRate):
             while self.running and self.asst.running: self.process()
+
+    # send api request to construct sentence
+    def send_to_api(self, sentence):
+        payload = {'sentence': sentence}
+        response = requests.post('http://localhost:5000/construct', data=payload)
 
 def main():
     try:
