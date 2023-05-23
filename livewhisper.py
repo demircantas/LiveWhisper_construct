@@ -2,6 +2,7 @@
 import whisper, os
 import numpy as np
 import sounddevice as sd
+# import requests # for sending to api
 from scipy.io.wavfile import write
 
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
@@ -64,9 +65,20 @@ class StreamHandler:
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('dictate.wav',fp16=False,language='en' if English else '',task='translate' if Translate else 'transcribe')
-            print(f"\033[1A\033[2K\033[0G{result['text']}")
-            if self.asst.analyze != None: self.asst.analyze(result['text'])
+            result = self.model.transcribe('dictate.wav', fp16=False, language='en' if English else '', task='translate' if Translate else 'transcribe')
+            transcribed_text = result['text']
+            print(f"\033[1A\033[2K\033[0G{transcribed_text}")
+
+            lowercase_text = transcribed_text.lower()
+            if 'construct' in lowercase_text:
+                construct_index = lowercase_text.index('construct')
+                sentence = transcribed_text[construct_index + len('construct'):].strip()
+                print(f"CONSTRUCT({sentence})")
+                # self.send_to_api(sentence)
+
+            if self.asst.analyze is not None:
+                self.asst.analyze(result['text'])
+
             self.fileready = False
 
     def listen(self):
