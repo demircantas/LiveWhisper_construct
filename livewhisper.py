@@ -10,12 +10,14 @@ from scipy.io.wavfile import write
 # This terminal implementation can run standalone or imported for assistant.py
 # by Nik Stromberg - nikorasu85@gmail.com - MIT 2022 - copilot
 
+# dtt
+
 Model = 'tiny'     # Whisper model size (tiny, base, small, medium, large)
 English = True      # Use English-only model?
 Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-Threshold = 0.025     # Minimum volume threshold to activate listening
+Threshold = 0.05     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
 
@@ -73,7 +75,13 @@ class StreamHandler:
             if 'construct' in lowercase_text:
                 construct_index = lowercase_text.index('construct')
                 sentence = transcribed_text[construct_index + len('construct'):].strip()
-                print(f"CONSTRUCT({sentence})")
+                print(f"\033[94mCONSTRUCT({sentence})\033[0m")
+                self.send_to_api(sentence)
+
+            if 'make' in lowercase_text:
+                construct_index = lowercase_text.index('make')
+                sentence = transcribed_text[construct_index + len('make'):].strip()
+                print(f"\033[94mMAKE({sentence})\033[0m")
                 self.send_to_api(sentence)
 
             if self.asst.analyze is not None:
