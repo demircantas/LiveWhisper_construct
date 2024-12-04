@@ -12,12 +12,12 @@ from scipy.io.wavfile import write
 
 # dtt
 
-Model = 'tiny'     # Whisper model size (tiny, base, small, medium, large)
+Model = 'large-v2'     # Whisper model size (tiny, base, small, medium, large)
 English = True      # Use English-only model?
 Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-Threshold = 0.05     # Minimum volume threshold to activate listening
+Threshold = 0.15     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
 
@@ -32,7 +32,8 @@ class StreamHandler:
         self.prevblock = self.buffer = np.zeros((0,1))
         self.fileready = False
         print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
-        self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
+        self.model = whisper.load_model(f'{Model}')
+        # self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
         print("\033[90m Done.\033[0m")
 
     def callback(self, indata, frames, time, status):
@@ -72,17 +73,17 @@ class StreamHandler:
             print(f"\033[1A\033[2K\033[0G{transcribed_text}")
 
             lowercase_text = transcribed_text.lower()
-            if 'construct' in lowercase_text:
-                construct_index = lowercase_text.index('construct')
-                sentence = transcribed_text[construct_index + len('construct'):].strip()
-                print(f"\033[94mCONSTRUCT({sentence})\033[0m")
-                self.send_to_api(sentence)
+            # if 'construct' in lowercase_text:
+            #     construct_index = lowercase_text.index('construct')
+            #     sentence = transcribed_text[construct_index + len('construct'):].strip()
+            #     print(f"\033[94mCONSTRUCT({sentence})\033[0m")
+            #     self.send_to_api(sentence)
 
-            if 'make' in lowercase_text:
-                construct_index = lowercase_text.index('make')
-                sentence = transcribed_text[construct_index + len('make'):].strip()
-                print(f"\033[94mMAKE({sentence})\033[0m")
-                self.send_to_api(sentence)
+            # if 'make' in lowercase_text:
+            #     construct_index = lowercase_text.index('make')
+            #     sentence = transcribed_text[construct_index + len('make'):].strip()
+            #     print(f"\033[94mMAKE({sentence})\033[0m")
+            #     self.send_to_api(sentence)
 
             if self.asst.analyze is not None:
                 self.asst.analyze(result['text'])
