@@ -2,7 +2,10 @@
 import whisper, os
 import numpy as np
 import sounddevice as sd
-import requests # for sending to api
+# import requests # for sending to api
+# import curses
+import pyttsx3
+import requests
 from scipy.io.wavfile import write
 
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
@@ -12,14 +15,17 @@ from scipy.io.wavfile import write
 
 # dtt
 
-Model = 'large-v2'     # Whisper model size (tiny, base, small, medium, large)
+# Model = 'medium.en'     # Whisper model size (tiny, base, small, medium, large)
+Model = 'tiny.en'     # Whisper model size (tiny, base, small, medium, large)
 English = True      # Use English-only model?
 Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-Threshold = 0.15     # Minimum volume threshold to activate listening
+Threshold = 0.05     # Minimum volume threshold to activate listening
 Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
+
+
 
 class StreamHandler:
     def __init__(self, assist=None):
@@ -35,6 +41,12 @@ class StreamHandler:
         self.model = whisper.load_model(f'{Model}')
         # self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
         print("\033[90m Done.\033[0m")
+
+        # Initialize the TTS engine
+        self.tts_engine = pyttsx3.init()
+        self.tts_engine.setProperty('rate', 150)  # Set speech rate
+        self.tts_engine.setProperty('volume', 1)  # Set volume level
+
 
     def callback(self, indata, frames, time, status):
         #if status: print(status) # for debugging, prints stream errors.
@@ -65,6 +77,25 @@ class StreamHandler:
             else:
                 self.prevblock = indata.copy() #np.concatenate((self.prevblock[-int(SampleRate/10):], indata)) # SLOW
 
+    def speak(self, message):
+        """Speaks the given message using TTS."""
+        self.tts_engine.say(message)
+        self.tts_engine.runAndWait()
+
+    # def send_command_to_windows(command):
+    def send_command_to_windows(self, command):
+        """Sends a JSON request to the Windows server to execute the command."""
+        WINDOWS_IP = "172.21.224.1"  # Replace with your Windows IP
+        url = f"http://{WINDOWS_IP}:5000/execute"
+        # url = "http://localhost:5000/execute"  # Ensure this matches the Windows server
+
+        payload = {"command": command}
+        try:
+            response = requests.post(url, json=payload, timeout=2)
+            print(f"\033[94mServer Response: {response.text}\033[0m")
+        except requests.exceptions.RequestException as e:
+            print(f"\033[91mError sending command: {e}\033[0m")
+
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
@@ -73,6 +104,35 @@ class StreamHandler:
             print(f"\033[1A\033[2K\033[0G{transcribed_text}")
 
             lowercase_text = transcribed_text.lower()
+            if "hello" in lowercase_text:
+                response = "Hi there! How can I help you today?"
+                print(f"\033[94mResponse: {response}\033[0m")
+                self.speak(response)
+            elif "how are you" in lowercase_text:
+                response = "I'm just a program, but I'm functioning perfectly. Thanks for asking!"
+                print(f"\033[94mResponse: {response}\033[0m")
+                self.speak(response)
+            elif "stop listening" in lowercase_text:
+                response = "Stopping the transcription. Goodbye!"
+                print(f"\033[94mResponse: {response}\033[0m")
+                self.speak(response)
+                self.running = False
+            elif "urban typologies" in lowercase_text:
+                hcResponse = "The Urban Metabolism Group (UMG) categorizes data into five distinct typologies, each focusing on different aspects of urban environments. The typologies are: Urban Morphology Typology, Metabolic Typology, Urban Resource Use, Vegetation and Land Characteristics Typology, Climate Risks Typology, Urbanization Impacts Typology."
+                print(f"\33[94mResponse: {hcResponse}]")
+                self.speak(hcResponse)
+
+            # commands for creating geometry
+            elif "create a cube" in lowercase_text:
+                print("\033[94mSending command: create_cube\033[0m")
+                self.send_command_to_windows("create_cube")
+            elif "create a cylinder" in lowercase_text:
+                self.send_command_to_windows("create_cylinder")
+            elif "create a sphere" in lowercase_text:
+                self.send_command_to_windows("create_sphere")
+            elif "create a cone" in lowercase_text:
+                self.send_command_to_windows("create_cone")
+
             # if 'construct' in lowercase_text:
             #     construct_index = lowercase_text.index('construct')
             #     sentence = transcribed_text[construct_index + len('construct'):].strip()
