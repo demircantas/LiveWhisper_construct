@@ -8,6 +8,8 @@ import pyttsx3
 import requests
 from scipy.io.wavfile import write
 
+import soundfile as sf  # Add at the top of your file if not already
+
 # This is my attempt to make psuedo-live transcription of speech using Whisper.
 # Since my system can't use pyaudio, I'm using sounddevice instead.
 # This terminal implementation can run standalone or imported for assistant.py
@@ -15,14 +17,28 @@ from scipy.io.wavfile import write
 
 # dtt
 
+# check if running on GPU
+import torch
+if torch.cuda.is_available():
+    print("\033[92mUsing GPU for Whisper model.\033[0m")
+else:
+    print("\033[93mUsing CPU for Whisper model.\033[0m")
+    # torch.set_default_tensor_type(torch.FloatTensor)  # use this if you want to force CPU
+
+# List audio devices
+# print(sd.query_devices())
+
+Model = 'base'     # Whisper model size (tiny, base, small, medium, large)
 # Model = 'medium.en'     # Whisper model size (tiny, base, small, medium, large)
-Model = 'tiny.en'     # Whisper model size (tiny, base, small, medium, large)
 English = True      # Use English-only model?
 Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-Threshold = 0.05     # Minimum volume threshold to activate listening
-Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
+# Threshold = 0.025     # Minimum volume threshold to activate listening
+Threshold = 0.005     # Minimum volume threshold to activate listening
+# Gain = 1.0          # Gain to apply to mic input
+Vocals = [70, 3000] # Frequency range to detect sounds that could be speech
+# Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
 EndBlocks = 40      # Number of blocks to wait before sending to Whisper
 
 
@@ -38,8 +54,8 @@ class StreamHandler:
         self.prevblock = self.buffer = np.zeros((0,1))
         self.fileready = False
         print("\033[96mLoading Whisper Model..\033[0m", end='', flush=True)
-        self.model = whisper.load_model(f'{Model}')
-        # self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
+        # self.model = whisper.load_model(f'{Model}')
+        self.model = whisper.load_model(f'{Model}{".en" if English else ""}')
         print("\033[90m Done.\033[0m")
 
         # Initialize the TTS engine
@@ -55,21 +71,34 @@ class StreamHandler:
             #print("\033[31mNo input or device is muted.\033[0m") #old way
             #self.running = False  # used to terminate if no input
             return
+
+        # Increase gain
+        # indata *= Gain  # 🔊 BOOST HERE
+
         # A few alternative methods exist for detecting speech.. #indata.max() > Threshold
         #zero_crossing_rate = np.sum(np.abs(np.diff(np.sign(indata)))) / (2 * indata.shape[0]) # threshold 20
         freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
+
         if np.sqrt(np.mean(indata**2)) > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
             print('.', end='', flush=True)
             if self.padding < 1: self.buffer = self.prevblock.copy()
             self.buffer = np.concatenate((self.buffer, indata))
             self.padding = EndBlocks
+
+            # Frequency and RMS calculations for debugging
+            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
+            rms = np.sqrt(np.mean(indata**2))
+            print(f"RMS: {rms:.4f}, Peak Frequency: {freq:.0f} Hz")
+
+
         else:
             self.padding -= 1
             if self.padding > 1:
                 self.buffer = np.concatenate((self.buffer, indata))
             elif self.padding < 1 < self.buffer.shape[0] > SampleRate: # if enough silence has passed, write to file.
                 self.fileready = True
-                write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
+                # write('dictate.wav', SampleRate, self.buffer) # I'd rather send data to Whisper directly..
+                sf.write('dictate.wav', self.buffer, SampleRate, format='WAV', subtype='PCM_16')
                 self.buffer = np.zeros((0,1))
             elif self.padding < 1 < self.buffer.shape[0] < SampleRate: # if recording not long enough, reset buffer.
                 self.buffer = np.zeros((0,1))
@@ -99,7 +128,21 @@ class StreamHandler:
     def process(self):
         if self.fileready:
             print("\n\033[90mTranscribing..\033[0m")
-            result = self.model.transcribe('dictate.wav', fp16=False, language='en' if English else '', task='translate' if Translate else 'transcribe')
+
+            # Play back the captured audio if desired
+            # if self.fileready:
+            #     print("\n\033[90mPlaying back captured audio...\033[0m")
+            #     data, fs = sf.read('dictate.wav', dtype='float32')
+            #     sd.play(data, fs)
+            #     sd.wait()  # Wait until playback is finished
+
+            result = self.model.transcribe('dictate.wav',
+                                            fp16=False,
+                                            language='en' if English else '',
+                                            task='translate' if Translate else 'transcribe',
+                                            # beam_size=5,
+                                            # temperature=0.2
+                                            )
             transcribed_text = result['text']
             print(f"\033[1A\033[2K\033[0G{transcribed_text}")
 
