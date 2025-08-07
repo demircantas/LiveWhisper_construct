@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Transcription Viewer</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #00ff90;
+      font-family: monospace;
+      padding: 20px;
+    }
+    h1 {
+      color: #00ffaa;
+    }
+    #log {
+      margin-top: 1em;
+      padding: 1em;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      height: 60vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Live Whisper Transcription</h1>
+  <div id="log">Connecting to WebSocket...</div>
+
+  <script>
+    const logDiv = document.getElementById("log");
+    const ws = new WebSocket("ws://localhost:8765");
+
+    ws.onopen = () => {
+      logDiv.innerText = "🟢 Connected. Waiting for transcription...\n";
+    };
+
+    ws.onmessage = (event) => {
+      const newText = event.data.trim();
+      const line = `> ${newText}\n`;
+      logDiv.innerText += line;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    };
+
+    ws.onclose = () => {
+      logDiv.innerText += "\n🔴 WebSocket closed.";
+    };
+
+    ws.onerror = (err) => {
+      logDiv.innerText += "\n⚠️ WebSocket error.";
+      console.error(err);
+    };
+  </script>
+</body>
+</html>
