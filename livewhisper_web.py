@@ -24,7 +24,8 @@ EndBlocks = 40
 # WebSocket server
 clients = set()
 
-async def websocket_handler(websocket, path):
+# async def websocket_handler(websocket, path):
+async def websocket_handler(websocket):
     clients.add(websocket)
     try:
         await websocket.wait_closed()
@@ -32,11 +33,19 @@ async def websocket_handler(websocket, path):
         clients.remove(websocket)
 
 def start_websocket_server():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    start_server = websockets.serve(websocket_handler, "0.0.0.0", 8765)
-    loop.run_until_complete(start_server)
-    loop.run_forever()
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     # start_server = websockets.serve(websocket_handler, "0.0.0.0", 8765)
+#     start_server = websockets.serve(websocket_handler, "0.0.0.0", 8765, loop=loop)
+#     loop.run_until_complete(start_server)
+#     loop.run_forever()
+
+    async def server_main():
+        async with websockets.serve(websocket_handler, "0.0.0.0", 8765):
+            print("✅ WebSocket server started on ws://0.0.0.0:8765")
+            await asyncio.Future()  # Run forever
+
+    asyncio.run(server_main())
 
 threading.Thread(target=start_websocket_server, daemon=True).start()
 
