@@ -34,8 +34,8 @@ English = True      # Use English-only model?
 Translate = False   # Translate non-English to English?
 SampleRate = 44100  # Stream device recording frequency
 BlockSize = 30      # Block size in milliseconds
-# Threshold = 0.025     # Minimum volume threshold to activate listening
-Threshold = 0.005     # Minimum volume threshold to activate listening
+Threshold = 0.025     # Minimum volume threshold to activate listening
+# Threshold = 0.005     # Minimum volume threshold to activate listening
 # Gain = 1.0          # Gain to apply to mic input
 Vocals = [70, 3000] # Frequency range to detect sounds that could be speech
 # Vocals = [50, 1000] # Frequency range to detect sounds that could be speech
@@ -86,9 +86,9 @@ class StreamHandler:
             self.padding = EndBlocks
 
             # Frequency and RMS calculations for debugging
-            freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
-            rms = np.sqrt(np.mean(indata**2))
-            print(f"RMS: {rms:.4f}, Peak Frequency: {freq:.0f} Hz")
+            # freq = np.argmax(np.abs(np.fft.rfft(indata[:, 0]))) * SampleRate / frames
+            # rms = np.sqrt(np.mean(indata**2))
+            # print(f"RMS: {rms:.4f}, Peak Frequency: {freq:.0f} Hz")
 
 
         else:
