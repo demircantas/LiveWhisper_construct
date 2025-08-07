@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,10 +38,19 @@
     };
 
     ws.onmessage = (event) => {
-      const newText = event.data.trim();
-      const line = `> ${newText}\n`;
-      logDiv.innerText += line;
-      logDiv.scrollTop = logDiv.scrollHeight;
+      const msg = event.data.trim();
+
+      if (msg === "[dot]") {
+        const dot = document.createElement("span");
+        dot.textContent = "• ";
+        dot.style.color = "#00ff90";
+        logDiv.appendChild(dot);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      } else {
+        const line = `\n> ${msg}\n`;
+        logDiv.innerText += line;
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
     };
 
     ws.onclose = () => {

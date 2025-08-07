@@ -1,8 +1,6 @@
-
 #!/usr/bin/env python3
 import whisper, os, numpy as np, sounddevice as sd, asyncio, threading, websockets
 import pyttsx3, requests, soundfile as sf
-from scipy.io.wavfile import write
 import torch
 
 # Whisper device setup
@@ -11,7 +9,6 @@ if torch.cuda.is_available():
 else:
     print("\033[93mUsing CPU for Whisper model.\033[0m")
 
-# Configs
 Model = 'base'
 English = True
 Translate = False
@@ -24,7 +21,6 @@ EndBlocks = 40
 # WebSocket server
 clients = set()
 
-# async def websocket_handler(websocket, path):
 async def websocket_handler(websocket):
     clients.add(websocket)
     try:
@@ -33,18 +29,10 @@ async def websocket_handler(websocket):
         clients.remove(websocket)
 
 def start_websocket_server():
-#     loop = asyncio.new_event_loop()
-#     asyncio.set_event_loop(loop)
-#     # start_server = websockets.serve(websocket_handler, "0.0.0.0", 8765)
-#     start_server = websockets.serve(websocket_handler, "0.0.0.0", 8765, loop=loop)
-#     loop.run_until_complete(start_server)
-#     loop.run_forever()
-
     async def server_main():
         async with websockets.serve(websocket_handler, "0.0.0.0", 8765):
             print("✅ WebSocket server started on ws://0.0.0.0:8765")
-            await asyncio.Future()  # Run forever
-
+            await asyncio.Future()  # run forever
     asyncio.run(server_main())
 
 threading.Thread(target=start_websocket_server, daemon=True).start()
@@ -77,6 +65,15 @@ class StreamHandler:
 
         if np.sqrt(np.mean(indata**2)) > Threshold and Vocals[0] <= freq <= Vocals[1] and not self.asst.talking:
             print('.', end='', flush=True)
+
+            async def send_dot():
+                for ws in clients:
+                    try:
+                        await ws.send("[dot]")
+                    except:
+                        pass
+            asyncio.run(send_dot())
+
             if self.padding < 1: self.buffer = self.prevblock.copy()
             self.buffer = np.concatenate((self.buffer, indata))
             self.padding = EndBlocks
